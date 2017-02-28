@@ -1,0 +1,94 @@
+1.age
+2.education
+3.gender
+5.maritalstatus
+6.citizenship
+7.placeofbirth
+8.income
+9.taxfilerstatus
+10.weeksworked
+
+module name: education(going to be held after 12 months)
+
+1.total no of people whos's age is greater than 18 citizens of that same place and how many people btw 17-18 yrs age and total
+
+hive: create view differentsum as select count(age) as q,p from (select count(age) as p from censusdata where age > 18 and citixenship='Native- Born in United States
+      ') a,censusdata where age between 17 and 18 and citizenship= 'Native- Born in United States' group by p;
+
+      create view total as select count(age) as p from censusdata where age > 17 and citizenship='Native- Born in United States' ;
+
+pig: census = load '/home/hduser/census' using PigStorage (',') as(age:int,education:chararray,maritalstatus:chararray,gender:chararray,taxfilerstatus:chararray,income:double,parents:chararray,countryofbirth:chararray,citizenship:chararray,weeksworked:int);
+
+      filterbyage= filter census by age > 18;
+     filterbyage1= filter census by age >= 17 and age <= 18;
+      groupbyage = GROUP filterbyage ALL;
+      groupbyage1 = GROUP filterbyage1 ALL;
+
+      countbyage = FOREACH groupbyage GENERATE group,COUNT(filterbyage.age) as out,1 as keyjoin;
+      countbyage1 = FOREACH groupbyage1 GENERATE group,COUNT(filterbyage1.age) as out1,1 as keyjoin;
+      join1 = join countbyage by keyjoin,countbyage1 by keyjoin;
+     output = foreach join1 generate out,out1 ;
+      dumo output;
+
+ output: (421880,15669)     
+
+5.how many male and females are their among them how many Never married and citizenship.
+
+hive: select gender,count(gender) from censusb where maritalstatus ='Never married' and citizenship = 'Native- Born in the United States' group by gender;
+ 
+OUTPUT: female = 115692
+        male = 121279
+
+pig: census = load '/home/hduser/census' using PigStorage (',') as(age:int,education:chararray,maritalstatus:chararray,gender:chararray,taxfilerstatus:chararray,income:double,parents:chararray,countryofbirth:chararray,citizenship:chararray,weeksworked:int);
+  
+filterbyall = FILTER census by maritalstatus =='Never married' AND citizenship == 'Native- Born in the United States';
+   
+groupbyall = GROUP filterbyall by gender;
+
+countbyall = FOREACH groupbyall GENERATE group,COUNT(filterbyall.gender) as a;
+
+6.what percent of the male and female are there and income separetely above 18 years and income more than 1000 .
+
+hive:(Female) create view total as select count(income) as o,p from (select count(gender) as p from censusdata where  gender ='Female' and age > 18 and income > 1000 ) a,censusdata group by p;
+
+output: 596523 178322
+
+     create view percentage as select 100*p/o from total;  
+output: 29.8932
+
+pig:  census = load '/home/hduser/census' using PigStorage (',') as(age:int,education:chararray,maritalstatus:chararray,gender:chararray,taxfilerstatus:chararray,income:double,parents:chararray,countryofbirth:chararray,citizenship:chararray,weeksworked:int);
+
+filterbyall= FILTER census by  gender ='Female' AND age > 18 AND income > 1000;
+filterbyfemale = FILTER census by gender = 'Female';
+  groupbyall = GROUP filterbyall ALL;
+  countbyall = FOREACH groupbyall GENERATE COUNT(filterbyfemale.gender) as a,COUNT(filterbyall.gender) as b, 100*b/a;
+   dump countrybyall;
+ 
+
+    (Male) create view total as select count(age) as o,p from (select count(gender) as p from censusdata where  gender ='Male' and age > 18 and income > 1000) a,censusdata
+ group by p;
+output: 596523 156479
+
+     create view percentage as select 100*p/o from total; 
+output: 26.23184 
+
+pig:  census = load '/home/hduser/census' using PigStorage (',') as(age:int,education:chararray,maritalstatus:chararray,gender:chararray,taxfilerstatus:chararray,income:double,parents:chararray,countryofbirth:chararray,citizenship:chararray,weeksworked:int);
+
+filterbyall= FILTER census by  gender ='Male' AND age > 18 AND income > 1000 AND education != 'Children';
+filterbyfemale = FILTER census by gender = 'Male';
+  groupbyall = GROUP filterbyall ALL;
+  countbyall = FOREACH groupbyall GENERATE COUNT(filterbyfemale.gender) as a,COUNT(filterbyall.gender) as b, 100*b/a;
+   dump countrybyall;
+
+
+7.how many people born in different place and got the citizenship and eligible for voting
+
+hive: select count(countryOfBirth) from censusdata where age > 18 and countryofbirth!='United-States' and(citizenship = 'Foreign born- U S citizen by naturization' or citizenship='Native- Born abroad of American Parent(s)'); 
+ output: 5252
+
+pig:  census = load '/home/hduser/census' using PigStorage (',') as(age:int,education:chararray,maritalstatus:chararray,gender:chararray,taxfilerstatus:chararray,income:double,parents:chararray,countryofbirth:chararray,citizenship:chararray,weeksworked:int);
+
+    filterbyall= FILTER census by age > 18 AND countryofbirth!='United-States' AND citizenship = 'Foreign born- U S citizen by naturization' OR citizenship='Native- Born abroad of American Parent(s)';
+     groupbyall = GROUP filterbyall ALL;
+  countbyall = FOREACH groupbyall GENERATE COUNT(filterbyall.countryofbirth) as a;
+   dump countrybyall;

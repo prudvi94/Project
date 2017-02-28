@@ -1,0 +1,88 @@
+2.from the total population of the people ,what percent of the people are educated(master degree) whos age is above 18
+
+hive: create view values as select count(education) as p,g,sum(income) from (select count(education) as g from censusdata where education='Bachelors degree(BA AB BS)' and age > 18) a,censusdata group by g;
+ 
+ output:596523 59227 1.03796
+
+       select 100*g/p from values;
+
+output: 9.9287
+
+pig:   census = load '/home/hduser/census' using PigStorage (',') as(age:int,education:chararray,maritalstatus:chararray,gender:chararray,taxfilerstatus:chararray,income:double,parents:chararray,countryofbirth:chararray,citizenship:chararray,weeksworked:int);
+    
+ filterbyeducation = FILTER census by education== 'Bachelors degree(BA AB BS)' and age > 18;
+ groupbyeducation = GROUP filterbyeducation ALL;
+  group1 = group census ALL;
+  countsumeducation =  FOREACH groupbyeducation GENERATE SUM(filterbyeducation.income) as a,COUNT(filterbyeducation.education) as b,1 as keyforjoin;
+  count1 = foreach group1 generate SUM(loadingdata.income) as c,COUNT(loadingdata.education) as d,1 as keyforjoin;
+join1 = join count1 by keyforjoin,countsumeducation by keyforjoin;
+percentage = foreach join1 generate 100*b/d;    
+dump percentage;
+OUTPUT:(9)
+
+
+3.how many people are working atleast 40 weeks among them how many  pay taxes 'Single',education'batchlor degree' and sum(income) ;
+ 
+ hive:create view working as select count(weeksworked) ,sum(income) as p from censusb where weeksworked >= 40 and taxfilerstatus != 'Single' and education ='Bachelors degree(BA AB BS)';
+
+ OUTPUT:30437	5.359002791000007E7
+
+
+ 
+pig:  census = load '/home/hduser/census' using PigStorage (',') as(age:int,education:chararray,maritalstatus:chararray,gender:chararray,taxfilerstatus:chararray,income:double,parents:chararray,countryofbirth:chararray,citizenship:chararray,weeksworked:int);
+ 
+   filterbyeducation = FILTER census by education ='Bachelors degree(BA AB BS)' and weeksworked >= 40 and taxfilerstatus != 'Nonfiler';
+   // filterbyeducation1 = FILTER census by education ='Bachelors degree(BA AB BS)';
+   //filterbywork = FILTER census by weeksworked >= 40;
+   //filterbytax = FILTER census by taxfilerstatus != 'Single'
+    
+   groupbyeducation = GROUP filterbyeducation ALL;
+   //groupbyeducation1 = GROUP filterbyeducation1 ALL;
+   //groupbywork = GROUP filterbywork ALL;
+   //groupbytax = GROUP filterbytax ALL;
+
+countsumeduction =  FOREACH groupbyeducation GENERATE COUNT(filterbyeducation.weeksworked) as a,SUM(filterbyeducation.income) as b;
+
+countsumeduction1 =  FOREACH groupbyeducation1 GENERATE COUNT(filterbyeducation.education) as b;
+countsumwork =  FOREACH groupbywork GENERATE COUNT(filterbywork.workingweeks) as a;
+countsumtax =  FOREACH groupbytax GENERATE COUNT(filterbytax.taxfilerstatus) as c;
+
+dump countsumeduction ;
+dump countsumeduction1;
+dump countsumwork;
+dump countsumtax;
+
+ OUTPUT:30437	5.359002791000007E7
+
+
+
+
+11.how many educated people are there never married dont have parents and income
+
+`hive: select education ,count(education),sum(income) from censusdata where maritalstatus='Never married' and parents ='Both parents present' group by education;
+
+OUTPUT:
+10th grade	5011	8562074.340000002
+11th grade	2733	4847843.439999993
+12th grade no diploma	448	756588.4600000007
+1st 2nd 3rd or 4th grade	5	12139.34
+5th or 6th grade	65	114514.49999999999
+7th and 8th grade	3188	5297664.0899999915
+9th grade	5381	8930178.88999999
+Children	99285	1.6324221250000155E8
+High school graduate	116	169101.86
+Less than 1st grade	16	13982.640000000001
+Some college but no degree	45	66530.52
+
+
+pig: 
+census = load '/home/cloudera/Downloads/census' using PigStorage (',') as(age:int,education:chararray,maritalstatus:chararray,gender:chararray,taxfilerstatus:chararray,income:double,parents:chararray,countryofbirth:chararray,citizenship:chararray,weeksworked:int);
+filterbyall = FILTER census by maritalstatus=='Never married' AND parents =='Both parents present';
+groupbyeducation = GROUP filterbyall by education ;
+countall = FOREACH groupbyeducation GENERATE group as edu ,COUNT(filterbyall.education) as a, 1 as prudvi;
+count1 = foreach groupbyeducation generate SUM(filterbyall.income) as b,1 as prudvi1;
+join1 = join countall by prudvi,count1 by prudvi1;
+output1 = foreach join1 generate edu,a,b;
+dump output1;
+STORE output1 into '/home/hduser/out2.txt';
+

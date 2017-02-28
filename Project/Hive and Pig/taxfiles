@@ -1,0 +1,112 @@
+1. how many people are born in different place and earning here and paying tax than citizenship
+
+hive:create view out11 as select count(countryofbirth),sum(income),taxfilerstatus as p ,q  from(select taxfilerstatus as q from censusdata where countryofbirth !='united-States' and income > 500 and citizenship = 'Foreign born- U S citizen by naturization' or citizenship='Native- Born abroad of American Parent(s)') a join  censusdata where countryofbirth =='united-States' and income > 500 and citizenship = 'Foreign born- U S citizen by naturization' or citizenship='Native- Born abroad of American Parent(s)' group by taxfilerstatus,q;
+
+53361	8.714069363999893E7	Head of household	Head of household
+32340	5.281254159999893E7	Head of household	Joint both 65+
+458766	7.491836258397695E8	Head of household	Joint both under 65
+13860	2.263394639999947E7	Head of household	Joint one under 65 & one 65+
+371910	6.073442284001697E8	Head of household	Nonfiler
+282975	4.6210973900043553E8	Head of household	Single
+32340	5.365561971000895E7	Joint both 65+	Head of household
+19600	3.2518557399999432E7	Joint both 65+	Joint both 65+
+278040	4.6129896425951684E8	Joint both 65+	Joint both under 65
+8400	1.3936524599999867E7	Joint both 65+	Joint one under 65 & one 65+
+225400	3.7396341009970146E8	Joint both 65+	Nonfiler
+171500	2.845373772500141E8	Joint both 65+	Single
+458766	7.844111814003888E8	Joint both under 65	Head of household
+278040	4.754007160001633E8	Joint both under 65	Joint both 65+
+3944196	6.743898728381749E9	Joint both under 65	Joint both under 65
+119160	2.0374316399999186E8	Joint both under 65	Joint one under 65 & one 65+
+3197460	5.467108233984164E9	Joint both under 65	Nonfiler
+2432850	4.1597562649865932E9	Joint both under 65	Single
+13860	1.9104529289999116E7	Joint one under 65 & one 65+	Head of household
+8400	1.1578502600000266E7	Joint one under 65 & one 65+	Joint both 65+
+119160	1.6424932974004298E8	Joint one under 65 & one 65+	Joint both under 65
+3600	4962215.400000002	Joint one under 65 & one 65+	Joint one under 65 & one 65+
+96600	1.3315277990005745E8	Joint one under 65 & one 65+	Nonfiler
+73500	1.0131189775003007E8	Joint one under 65 & one 65+	Single
+371910	5.94905436509803E8	Nonfiler	Head of household
+225400	3.605487493999211E8	Nonfiler	Joint both 65+
+3197460	5.114641545045011E9	Nonfiler	Joint both under 65
+96600	1.5452089260001573E8	Nonfiler	Joint one under 65 & one 65+
+2592100	4.146310618100755E9	Nonfiler	Nonfiler
+1972250	3.1548015572521725E9	Nonfiler	Single
+282975	5.118522670796825E8	Single	Head of household
+171500	3.1021349519996274E8	Single	Joint both 65+
+2432850	4.400600010492727E9	Single	Joint both under 65
+73500	1.3294864079999202E8	Single	Joint one under 65 & one 65+
+1972250	3.56745519480706E9	Single	Nonfiler
+1500625	2.7143680830025496E9	Single	Single
+
+
+
+pig:  census = load '/home/hduser/census' using PigStorage (',') as(age:int,education:chararray,maritalstatus:chararray,gender:chararray,taxfilerstatus:chararray,income:double,parents:chararray,countryofbirth:chararray,citizenship:chararray,weeksworked:int);
+
+    filterbyall= FILTER census by countryofbirth !='united-States' and income > 500 and citizenship='Native- Born in United States';
+    filterbyall1= FILTER census by countryofbirth =='united-States' and income > 500 and citizenship='Native- Born in United States';
+    groupbyall = GROUP filterbyall by citizenship;
+    groupbyall1 = GROUP filterbyall1 by citizenship;
+    countbyall = FOREACH groupbyall GENERATE group as citizen, COUNT(filterbyall.countryofbirth) as a;
+    countbyall1 = FOREACH groupbyall1 GENERATE COUNT(filterbyall.countryofbirth) as b;
+    join1 = join countbyall by keyjoins ,countbyall1 by keyjoins1;
+    output1 = foreach join generate citizen,a,b;
+    dump output1;
+   
+
+2.sum of income who payed the highest income among citizen or notcitizen
+hive: select p,q,r,s  from (select sum(income)as p from censusdata where citizenship !='Native- Born in the United States' ) a  join (select MAX(income)as q  from censusdata where citizenship !='Native- Born in the United States') b join  (select sum(income) as r from  censusdata where citizenship ='Native- Born in the United States') c join (select max(income) as s  from censusdata where citizenship ='Native- Born in the United States') d;
+
+
+
+OUTPUT:1.0434788610999975E8	9195.17	9.336177008099449E8	18656.3
+
+pig:  census = load '/home/hduser/census' using PigStorage (',') as(age:int,education:chararray,maritalstatus:chararray,gender:chararray,taxfilerstatus:chararray,income:double,parents:chararray,countryofbirth:chararray,citizenship:chararray,weeksworked:int);
+natives = filter census by citizenship=='Native- Born in United States';
+nonnatives = filter census by citizenship!='Native- Born in United States';
+forincome = group nonnatives all;
+summofincome = foreach forincome generate SUM(nonnatives.income) as incomeofnonnatives,1 as keyforjoin;
+forincomenatives = group natives all;
+summofincomenative = foreach forincomenatives generate SUM(natives.income) as incomeofnonnatives,1 as keyforjoin;
+joining = join summofincomenative by keyforjoin,summofincome by keyforjoin;
+output1 = foreach joining generate incomeofnonnatives,incomeofnatives;
+dump output1;
+
+
+3.how many widows and parents are there and how many are working and taxfilers 
+hive: select count(maritalstatus), p from (select count(parents) as p from censusdata where parents = "Both parents present" and  weeksworked > 0 and taxfilerstatus != 'Nonfiler') a join censusdata where maritalstatus='Widowed' and  weeksworked > 0 and taxfilerstatus != 'Nonfiler' group by p; 
+
+OUTPUT:6202	3810
+
+
+pig:  census = load '/home/hduser/census' using PigStorage (',') as(age:int,education:chararray,maritalstatus:chararray,gender:chararray,taxfilerstatus:chararray,income:double,parents:chararray,countryofbirth:chararray,citizenship:chararray,weeksworked:int);
+ 
+   filterbyall= FILTER census by maritalstatus='Widowed' AND parents ='Both parents present' AND weeksworked > 0 AND taxfilerstatus != 'Nonfiler';
+ groupbyall = GROUP filterbyall ALL;
+ countbyall =  FOREACH groupbyall GENERATE COUNT(filterbyall.maritalstatus) as a, COUNT(filterbyall.parents) as b;
+ dump countbyall;
+
+ 
+
+
+4.how many females and males are there earning income how much tax they are paying 
+
+hive:select gender,count(gender),AVG(income),e,c,d from(select gender as e,count(gender) as c,AVG(income) as d from censusdata where gender='Male' and taxfilerstatus !='Nonfiler' group by gender) a join censusdata where gender='Female' and taxfilerstatus !='Nonfiler' group by gender,c,d;
+ 
+OUTPUT:Female	192223	1733.9519407667374	Male	180457	1793.3677057692505
+     
+
+pig: census = load '/home/cloudera/census' using PigStorage (',') as(age:int,education:chararray,maritalstatus:chararray,gender:chararray,taxfilerstatus:chararray,income:double,parents:chararray,countryofbirth:chararray,citizenship:chararray,weeksworked:int);
+
+filterbyfemale : FILTER census by gender='Female' AND taxfilerstatus !='Nonfiler';
+groupbyfemale = GROUP filterbyfemale by gender;
+countallfemale = FOREACH groupbyfemale GENERATE (filterbyfemale.gender) as a,COUNT(filterbyfemale.gender) as b,AVG(filterbyfemale.income) as c,1 as keyjoins;
+
+filterbymale : FILTER census by gender='Male' AND taxfilerstatus !='Nonfiler';
+groupbyeducation1 = GROUP filterbynale ALL;
+countallmale = FOREACH groupbymale GENERATE (filterbymale.gender) as d,COUNT(filterbymale.gender) as e,AVG(filterbymale.income) as f,1 as keyjoins;
+joining = join countallfemale by keyjoins,countallmale by keyjoins;
+output1= foreach joining generate a,b,c,d,e,f;
+dump output1;
+
+
